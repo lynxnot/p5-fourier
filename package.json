@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "p5-fourier",
+  "scripts": {
+    "build": "tsc -b",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/p5": "^0.9.1",
+    "typescript": "^4.2.4"
+  }
+}
