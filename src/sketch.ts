@@ -17,7 +17,7 @@ type Wave = {
 
 // Each individual element of a serie is called an octave
 // Octaves could be expressed in roman numerals or the first, second and so on.
-// lets define a type and just represent it as a number starting at 1 for the first.
+// lets define a type and just represent it as a number starting at 0 for the first.
 type Octave = number;
 
 // So a waveform is a function that takes an octave and returns a wave
@@ -30,7 +30,7 @@ const oddI = (i: number): number => {
 
 // Square Wave
 const squareWave = (o: Octave): Wave => {
-  let k: number = oddI(o - 1);
+  let k: number = oddI(o);
   return {
     amplitude: (SCALE * 4) / (k * PI),
     angularVelocity: k,
@@ -52,8 +52,7 @@ const squareWave = (o: Octave): Wave => {
 // as a number between 0 and 2*PI.
 type Time = number;
 const incrementTime = (t: Time, dt: number) => {
-  let tx = t + dt;
-  return tx >= TWO_PI ? tx - TWO_PI : tx;
+  return (t + dt) % TWO_PI;
 };
 
 // lets define an epicycle like so
@@ -86,8 +85,8 @@ const epicyclesRecurse = (
   pos: p5.Vector,
   epis: Epicycle[]
 ): Epicycle[] => {
-  if (epis.length === n) return epis;
-  let o: Octave = epis.length + 1;
+  if (epis.length - 1 === n) return epis;
+  let o: Octave = epis.length;
   let epi = {
     pos: pos,
     wave: wf(o),
@@ -97,7 +96,7 @@ const epicyclesRecurse = (
 };
 
 // Now that we have a list of epicycles, we can define the list of
-// radius lines as such
+// radius'es as such
 type RadialLine = {
   p1: p5.Vector;
   p2: p5.Vector;
@@ -114,8 +113,9 @@ const radialLines = (t: Time, epis: Epicycle[]): RadialLine[] => {
   return radials;
 };
 
-// now lets imagine that the last point p2 in the radials list is a pencil
-// we need an array to store the trajectory.
+// now lets imagine that the last point p2 in the radials list is a pencil,
+// if we store its position in a list of vectors growing at each frame,
+// we have its trajectory
 //
 type Trajectory = p5.Vector[];
 const trajectory: Trajectory = [];
@@ -124,7 +124,7 @@ const trajectory: Trajectory = [];
 const drawEpicycle = (e: Epicycle): void => {
   noFill();
   stroke(255, 140);
-  ellipse(e.pos.x, e.pos.y, e.wave.amplitude * 2);
+  circle(e.pos.x, e.pos.y, e.wave.amplitude * 2);
 };
 
 const drawRadialLine = (l: RadialLine): void => {
@@ -146,7 +146,7 @@ const drawProjectionLine = (last: p5.Vector): void => {
   stroke(192, 56, 87, 205);
   line(last.x, last.y, WF_TRANSLATE, last.y);
   fill(192, 56, 87, 205);
-  ellipse(WF_TRANSLATE, last.y, 4);
+  circle(WF_TRANSLATE, last.y, 4);
 };
 
 const drawWaveForm = (t: Trajectory): void => {
