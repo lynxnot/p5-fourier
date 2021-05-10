@@ -1,7 +1,10 @@
 //
 const SCALE = 69;
-const DT = 0.0125;
+const CANVAS_W = 800;
+const CANVAS_H = 600;
 const WF_TRANSLATE = 250;
+const DT = 0.0125;
+const DIV_ID = 'p5-sketch';
 
 // Math Domain
 
@@ -23,19 +26,43 @@ type Octave = number;
 // So a waveform is a function that takes an octave and returns a wave
 type WaveForm = (o: Octave) => Wave;
 
-// lets define an helper function the returns odd numbers by index
-const oddI = (i: number): number => {
-  return 2 * i + 1;
-};
-
 // Square Wave
-const squareWave = (o: Octave): Wave => {
-  let k: number = oddI(o);
+const squareWave: WaveForm = (o: Octave): Wave => {
+  let k: number = 2 * o + 1;
   return {
     amplitude: (SCALE * 4) / (k * PI),
     angularVelocity: k,
     initialOffset: 0,
   };
+};
+
+const sawWave = (o: Octave): Wave => {
+  let k = o + 1;
+  let sign = k % 2 === 0 ? 1 : -1;
+  return {
+    amplitude: (SCALE * 2) / (sign * k * PI),
+    angularVelocity: 2 * k,
+    initialOffset: 0,
+  };
+};
+
+// e super powers
+const lolWave = (o: Octave): Wave => {
+  let k = 2 * (o + 1);
+  return {
+    amplitude: (SCALE * 4) / (k * PI),
+    angularVelocity: k ^ (2.71 ^ k),
+    initialOffset: 0,
+  };
+};
+
+const waveForm = (name: string): WaveForm => {
+  let wfs = new Map<string, WaveForm>();
+  wfs.set('square', squareWave);
+  wfs.set('sawtooth', sawWave);
+  wfs.set('sin', lolWave);
+  let wf = wfs.get(name);
+  return wf ? wf : squareWave;
 };
 
 // Animation Domain
@@ -85,7 +112,7 @@ const epicyclesRecurse = (
   pos: p5.Vector,
   epis: Epicycle[]
 ): Epicycle[] => {
-  if (epis.length - 1 === n) return epis;
+  if (epis.length === n) return epis;
   let o: Octave = epis.length;
   let epi = {
     pos: pos,
@@ -118,12 +145,12 @@ const radialLines = (t: Time, epis: Epicycle[]): RadialLine[] => {
 // we have its trajectory
 //
 type Trajectory = p5.Vector[];
-const trajectory: Trajectory = [];
+let trajectory: Trajectory = [];
 
 // drawing functions
 const drawEpicycle = (e: Epicycle): void => {
   noFill();
-  stroke(255, 140);
+  stroke(192, 66);
   circle(e.pos.x, e.pos.y, e.wave.amplitude * 2);
 };
 
@@ -161,16 +188,41 @@ const drawWaveForm = (t: Trajectory): void => {
 
 // p5 things
 let time: Time = 0;
+let octavesSlider: p5.Element;
+let wfSelect: p5.Element;
+let wfPrevious: string;
 
 const setup = () => {
-  createCanvas(800, 600);
+  const c = createCanvas(CANVAS_W, CANVAS_H);
+  c.parent(DIV_ID);
+
+  octavesSlider = createSlider(2, 24, 5, 1);
+  octavesSlider.parent(DIV_ID);
+
+  wfSelect = createSelect();
+  wfSelect.option('square');
+  wfSelect.option('sawtooth');
+  wfSelect.option('sin');
+  wfSelect.selected('square');
+  wfPrevious = 'square';
+  wfSelect.parent(DIV_ID);
 };
 
 const draw = () => {
+  let octaves = octavesSlider.value() as number;
+  let wf = wfSelect.value() as string;
+  if (wf !== wfPrevious) trajectory = [];
+  wfPrevious = wf;
+
   background(51);
   translate(width / 4, height / 2);
 
-  const epis = epicycles(time, 5, squareWave);
+  fill(235, 219, 178);
+  stroke(235, 219, 178);
+  textSize(16);
+  text(`Octaves: ${octaves}`, -width / 4 + 20, height / 2 - 20);
+
+  const epis = epicycles(time, octaves, waveForm(wf));
   const radials = radialLines(time, epis);
 
   epis.map(drawEpicycle);
@@ -179,7 +231,7 @@ const draw = () => {
   // add last `pencil` position to trajectory
   let lastPos = radials[radials.length - 1].p2;
   trajectory.unshift(lastPos);
-  if (trajectory.length > 256) trajectory.pop();
+  if (trajectory.length > 512) trajectory.pop();
 
   drawTrajectory(trajectory);
   drawProjectionLine(lastPos);
